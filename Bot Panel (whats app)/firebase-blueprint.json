@@ -1,0 +1,37 @@
+{
+  "entities": {
+    "BotSettings": {
+      "title": "Bot Settings",
+      "description": "Configuration for the WhatsApp bot's personality and API credentials.",
+      "type": "object",
+      "properties": {
+        "botName": { "type": "string", "description": "The name of the bot." },
+        "personality": { "type": "string", "description": "Instructions for Gemini on how to respond." },
+        "geminiApiKey": { "type": "string", "description": "Custom Gemini API Key to use for generating responses." },
+        "whatsappAccessToken": { "type": "string", "description": "WhatsApp Business API Access Token." },
+        "whatsappPhoneNumberId": { "type": "string", "description": "WhatsApp Business Phone Number ID." },
+        "whatsappVerifyToken": { "type": "string", "description": "Token for WhatsApp webhook verification." },
+        "isActive": { "type": "boolean", "description": "Whether the bot is currently active." }
+      },
+      "required": ["botName", "personality", "isActive"]
+    },
+    "MessageLog": {
+      "title": "Message Log",
+      "description": "Logs of incoming and outgoing WhatsApp messages.",
+      "type": "object",
+      "properties": {
+        "from": { "type": "string", "description": "Sender's phone number." },
+        "to": { "type": "string", "description": "Recipient's phone number." },
+        "message": { "type": "string", "description": "The content of the message." },
+        "type": { "type": "string", "enum": ["incoming", "outgoing"], "description": "Direction of the message." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent/received." },
+        "aiResponse": { "type": "boolean", "description": "Whether this was an AI-generated response." }
+      },
+      "required": ["from", "to", "message", "type", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/settings/bot": { "schema": "BotSettings", "description": "Single document for bot settings." },
+    "/logs": { "schema": "MessageLog", "description": "Collection of message logs." }
+  }
+}

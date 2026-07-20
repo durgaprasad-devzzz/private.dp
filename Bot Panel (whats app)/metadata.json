@@ -1,0 +1,8 @@
+{
+  "name": "WhatsApp Auto-Reply Bot",
+  "description": "An AI-powered automatic reply bot for WhatsApp Business API, using Gemini for intelligent responses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

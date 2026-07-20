@@ -1,0 +1,88 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: settings
+// Document ID: bot
+// Fields:
+//   - botName: string (required)
+//   - personality: string (required)
+//   - whatsappAccessToken: string (required)
+//   - whatsappPhoneNumberId: string (required)
+//   - whatsappVerifyToken: string (required)
+//   - isActive: boolean (required)
+//
+// Collection: logs
+// Document ID: auto-generated
+// Fields:
+//   - from: string (required)
+//   - to: string (required)
+//   - message: string (required)
+//   - type: string (required, enum: ['incoming', 'outgoing'])
+//   - timestamp: timestamp (required)
+//   - aiResponse: boolean (optional)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        ((request.auth.token.email == "lovelyprasad6551@gmail.com" && request.auth.token.email_verified == true) ||
+         (request.auth.token.email == "durgaprasadb120802@gmail.com" && request.auth.token.email_verified == true) ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    function isValidBotSettings(data) {
+      return data.keys().hasAll(['botName', 'personality', 'isActive']) &&
+             data.botName is string && data.botName.size() < 100 &&
+             data.personality is string && data.personality.size() < 5000 &&
+             data.isActive is bool &&
+             (!('geminiApiKey' in data) || (data.geminiApiKey is string && data.geminiApiKey.size() <= 200));
+    }
+
+    function isValidMessageLog(data) {
+      return data.keys().hasAll(['from', 'to', 'message', 'type', 'timestamp']) &&
+             data.from is string && data.from.size() < 50 &&
+             data.to is string && data.to.size() < 50 &&
+             data.message is string && data.message.size() < 10000 &&
+             data.type in ['incoming', 'outgoing'] &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /settings/bot {
+      allow read: if true;
+      allow write: if isAdmin() && isValidBotSettings(request.resource.data);
+    }
+
+    match /logs/{logId} {
+      allow read: if true;
+      allow create: if isValidMessageLog(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
