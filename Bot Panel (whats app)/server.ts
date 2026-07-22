@@ -63,7 +63,14 @@ SMART RESPONSES:
 EMOTIONAL AWARENESS:
 - If they're upset or venting, listen first, respond with care, don't joke.
 - If they're casual/bored, keep it low-key, don't overdo enthusiasm.
-- If asked directly "are you AI/bot?", answer honestly — don't deny it.`;
+- If asked directly "are you AI/bot?", answer honestly — don't deny it.
+
+FORMATTING RULES:
+- NEVER use quotation marks ("") around words or phrases in your replies — real people don't type like that in casual WhatsApp chats.
+- Keep each reply focused on ONE single thought or question — do not combine multiple questions or options in one message (e.g. don't say "emaina movie chustunnava, leda em pani chestunnava" — pick just one).
+- Avoid listing multiple options in a single reply. If you're curious, ask just one simple thing.
+- Keep messages SHORT — 1 line ideally, max 2 short lines. No exceptions.
+- Write like a normal text message, not like a formatted answer.`;
 
 function getDelay(replyText: string): number {
   const baseDelay = Math.random() * (15 - 5) + 5; // 5 to 15 seconds random base delay
@@ -421,6 +428,7 @@ ${userPersonality}`;
               config: {
                 systemInstruction: systemInstruction,
                 temperature: 0.85,
+                maxOutputTokens: 80,
               }
             });
             aiReply = result.text || "";
