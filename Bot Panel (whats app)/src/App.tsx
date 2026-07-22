@@ -201,12 +201,23 @@ export default function App() {
 
   const saveSettings = async () => {
     if (!user) return;
+    
+    // Ask for password before saving
+    const enteredPassword = window.prompt("Please enter the admin password to save changes:");
+    const correctPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+
+    if (enteredPassword !== correctPassword) {
+      alert("❌ Incorrect Password! You are not allowed to change settings.");
+      return;
+    }
+
     setSaving(true);
     try {
       await setDoc(doc(db, "settings", "bot"), settings);
-      alert("Settings saved!");
+      alert("✅ Settings saved successfully!");
     } catch (error) {
       console.error(error);
+      alert("Error saving settings!");
     } finally {
       setSaving(false);
     }
