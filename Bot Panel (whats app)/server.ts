@@ -312,6 +312,20 @@ async function connectToWhatsApp() {
         // Double-check active state again before heavy operations
         if (sock !== currentSock || connectionStatus !== "open") return;
 
+        // 0.5 Check Contacts & Strict Mode
+        logDebug("Fetching contacts to check persona and strict mode...");
+        const contactsRef = doc(db, "settings", "contacts");
+        const contactsSnap = await getDoc(contactsRef);
+        const contacts = contactsSnap.exists() ? (contactsSnap.data().list || []) : [];
+        
+        const participantPhone = from.split("@")[0];
+        const knownContact = contacts.find((c: any) => c.id === from || c.id.includes(participantPhone));
+        
+        if (settings && settings.ignoreUnknown && !knownContact) {
+          logDebug(`Strict Mode is ON and ${from} is not in contacts. Ignoring message completely.`);
+          return;
+        }
+
         // 1. Log Incoming Message to Firestore
         logDebug("Logging incoming message to Firestore...");
         await addDoc(collection(db, "logs"), {
@@ -379,17 +393,31 @@ async function connectToWhatsApp() {
           }
         }
 
-        const userPersonality = settings?.personality || DEFAULT_PERSONALITY;
+        let personaInstruction = "";
+        if (knownContact) {
+          logDebug(`Contact found: ${knownContact.name} - Persona: ${knownContact.category}`);
+          if (knownContact.category === "boss") {
+            personaInstruction = `You are replying on behalf of Durgaprasad to his Boss/Senior (${knownContact.name}). Be extremely formal, respectful, and highly professional. Use "sir" or proper titles. Keep replies clear, polite, and to the point. No slang, no jokes, and absolutely NO casual behavior.`;
+          } else if (knownContact.category === "relative") {
+            personaInstruction = `You are replying on behalf of Durgaprasad to a family relative (${knownContact.name}). Be very warm, highly respectful, and caring — like talking to an elder family member. Show respect, use polite Telugu/English language, and avoid heavy slang or jokes.`;
+          } else if (knownContact.category === "friend") {
+            personaInstruction = `You are replying on behalf of Durgaprasad to a close friend (${knownContact.name}). Keep replies short, casual, and informal (Introvert personality).`;
+          } else {
+            personaInstruction = settings?.personality || DEFAULT_PERSONALITY;
+          }
+        } else {
+          personaInstruction = settings?.personality || DEFAULT_PERSONALITY;
+        }
+
         const systemInstruction = `You are NOT a virtual assistant, customer support bot, AI model, or automated helper.
-You are a close personal friend chatting casually on WhatsApp.
+You are chatting on WhatsApp on behalf of Durgaprasad.
 
 CRITICAL CONSTRAINTS:
 - NEVER say robotic assistant phrases like "How can I help you today", "As an AI...", "As your virtual assistant", "I am here to assist", "Is there anything else", or "How may I help".
-- Talk exactly like a real friend texting: casual, warm, relaxed, and relatively short.
-- Use natural language and text formatting (like lowercase, casual punctuation, short phrases) typical of messaging.
+- Talk exactly like a real person texting: natural language, casual punctuation.
 
-Specific Personality & Context instructions to adopt:
-${userPersonality}`;
+Specific Personality & Context instructions to adopt for this specific contact:
+${personaInstruction}`;
 
         let apiKey = settings?.geminiApiKey;
         if (!apiKey || !apiKey.startsWith("AIzaSy")) {

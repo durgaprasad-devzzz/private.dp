@@ -41,7 +41,10 @@ import {
   Eye,
   EyeOff,
   MessageSquare,
-  X
+  X,
+  Users,
+  Plus,
+  Trash2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { io, Socket } from "socket.io-client";
@@ -50,7 +53,15 @@ interface BotSettings {
   botName: string;
   personality: string;
   isActive: boolean;
+  isActive: boolean;
   geminiApiKey?: string;
+  ignoreUnknown?: boolean;
+}
+
+interface Contact {
+  id: string; // e.g., 919876543210@s.whatsapp.net
+  name: string;
+  category: "boss" | "relative" | "friend" | "default";
 }
 
 interface MessageLog {
@@ -89,11 +100,18 @@ export default function App() {
     botName: "AI Assistant",
     personality: DEFAULT_PERSONALITY,
     isActive: true,
+    isActive: true,
     geminiApiKey: "",
+    ignoreUnknown: false,
   });
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [newContactPhone, setNewContactPhone] = useState("");
+  const [newContactName, setNewContactName] = useState("");
+  const [newContactCategory, setNewContactCategory] = useState<Contact["category"]>("friend");
+
   const [logs, setLogs] = useState<MessageLog[]>([]);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"settings" | "link" | "logs">("link");
+  const [activeTab, setActiveTab] = useState<"settings" | "link" | "logs" | "contacts">("link");
   const [showApiKey, setShowApiKey] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<string | null>(null);
 
@@ -155,7 +173,8 @@ export default function App() {
             botName: data.botName || "AI Assistant",
             personality: data.personality || DEFAULT_PERSONALITY,
             isActive: data.isActive !== false,
-            geminiApiKey: data.geminiApiKey || ""
+            geminiApiKey: data.geminiApiKey || "",
+            ignoreUnknown: data.ignoreUnknown || false
           });
         } else {
           try {
@@ -163,11 +182,19 @@ export default function App() {
               botName: "AI Assistant",
               personality: DEFAULT_PERSONALITY,
               isActive: true,
-              geminiApiKey: ""
+              geminiApiKey: "",
+              ignoreUnknown: false
             });
           } catch (e) {
             console.error("Error initializing settings in DB:", e);
           }
+        }
+
+        // Fetch contacts
+        const contactsRef = doc(db, "settings", "contacts");
+        const contactsSnap = await getDoc(contactsRef);
+        if (contactsSnap.exists()) {
+          setContacts(contactsSnap.data().list || []);
         }
       };
       fetchSettings();
@@ -214,12 +241,31 @@ export default function App() {
     setSaving(true);
     try {
       await setDoc(doc(db, "settings", "bot"), settings);
-      alert("✅ Settings saved successfully!");
+      await setDoc(doc(db, "settings", "contacts"), { list: contacts });
+      alert("✅ Settings & Contacts saved successfully!");
     } catch (error) {
       console.error(error);
       alert("Error saving settings!");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const addContact = () => {
+    if (!newContactPhone || !newContactName) return alert("Please fill both phone and name.");
+    let phone = newContactPhone.replace(/[^0-9]/g, "");
+    if (!phone.includes("@s.whatsapp.net")) phone = `${phone}@s.whatsapp.net`;
+    
+    if (contacts.find(c => c.id === phone)) return alert("Contact already exists!");
+    
+    setContacts([...contacts, { id: phone, name: newContactName, category: newContactCategory }]);
+    setNewContactPhone("");
+    setNewContactName("");
+  };
+
+  const removeContact = (id: string) => {
+    if(confirm("Remove this contact?")) {
+      setContacts(contacts.filter(c => c.id !== id));
     }
   };
 
@@ -299,6 +345,15 @@ export default function App() {
           >
             <Settings className="w-5 h-5" />
             AI Settings
+          </button>
+          <button
+            onClick={() => setActiveTab("contacts")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              activeTab === "contacts" ? "bg-emerald-50 text-emerald-700 font-medium" : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            Contacts (Personas)
           </button>
           <button
             onClick={() => setActiveTab("logs")}
@@ -453,8 +508,11 @@ export default function App() {
                         className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
                       />
                     </div>
-                    <div className="flex items-center gap-4 pt-8">
-                      <label className="text-sm font-semibold text-slate-700">Auto-Reply Active</label>
+                    <div className="flex items-center justify-between pt-8 border-t border-slate-100">
+                      <div>
+                        <label className="text-sm font-semibold text-slate-700">Auto-Reply Active</label>
+                        <p className="text-xs text-slate-400">Turn on to allow bot to reply to messages.</p>
+                      </div>
                       <button
                         onClick={() => setSettings({ ...settings, isActive: !settings.isActive })}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
@@ -462,6 +520,20 @@ export default function App() {
                         }`}
                       >
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.isActive ? "translate-x-6" : "translate-x-1"}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                      <div>
+                        <label className="text-sm font-semibold text-slate-700">Strict Mode (Ignore Unknown)</label>
+                        <p className="text-xs text-slate-400">If ON, bot ignores anyone NOT in your Contacts list.</p>
+                      </div>
+                      <button
+                        onClick={() => setSettings({ ...settings, ignoreUnknown: !settings.ignoreUnknown })}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          settings.ignoreUnknown ? "bg-emerald-600" : "bg-slate-200"
+                        }`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.ignoreUnknown ? "translate-x-6" : "translate-x-1"}`} />
                       </button>
                     </div>
                   </div>
@@ -519,6 +591,86 @@ export default function App() {
                   <button onClick={saveSettings} disabled={saving} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-semibold py-2 px-8 rounded-xl transition-all shadow-md">
                     <Save className="w-4 h-4" /> {saving ? "Saving..." : "Save Config"}
                   </button>
+                </div>
+              </div>
+            </motion.div>
+          ) : activeTab === "contacts" ? (
+            <motion.div key="contacts" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="max-w-4xl">
+              <header className="mb-8 flex justify-between items-end">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">Contacts & Personas</h2>
+                  <p className="text-slate-500">Configure different personalities for specific contacts.</p>
+                </div>
+                <button onClick={saveSettings} disabled={saving} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-semibold py-2 px-6 rounded-xl transition-all shadow-md">
+                  <Save className="w-4 h-4" /> {saving ? "Saving..." : "Save Config"}
+                </button>
+              </header>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+                <div className="p-6 bg-slate-50 border-b border-slate-200">
+                  <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2"><Plus className="w-4 h-4"/> Add New Contact</h3>
+                  <div className="flex flex-wrap gap-4 items-end">
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Phone Number (with Country Code)</label>
+                      <input type="text" placeholder="e.g. 919876543210" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none" />
+                    </div>
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Name</label>
+                      <input type="text" placeholder="e.g. My Boss" value={newContactName} onChange={e => setNewContactName(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none" />
+                    </div>
+                    <div className="w-40">
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Persona</label>
+                      <select value={newContactCategory} onChange={e => setNewContactCategory(e.target.value as any)} className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none">
+                        <option value="friend">Friend (Short)</option>
+                        <option value="boss">Boss (Formal)</option>
+                        <option value="relative">Relative (Warm)</option>
+                        <option value="default">Default</option>
+                      </select>
+                    </div>
+                    <button onClick={addContact} className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium transition-colors">
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-white border-b border-slate-200">
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Name</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Phone Number</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Persona (Category)</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {contacts.length === 0 ? (
+                        <tr><td colSpan={4} className="px-6 py-12 text-center text-slate-400">No contacts added yet. Bot uses Default for everyone.</td></tr>
+                      ) : (
+                        contacts.map((contact) => (
+                          <tr key={contact.id} className="hover:bg-slate-50/50">
+                            <td className="px-6 py-4 text-sm font-semibold text-slate-900">{contact.name}</td>
+                            <td className="px-6 py-4 text-sm text-slate-500 font-mono">{contact.id.split("@")[0]}</td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                                contact.category === 'boss' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                contact.category === 'relative' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                contact.category === 'friend' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}>
+                                {contact.category.charAt(0).toUpperCase() + contact.category.slice(1)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button onClick={() => removeContact(contact.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded hover:bg-red-100">
+                                <Trash2 className="w-4 h-4"/>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </motion.div>
