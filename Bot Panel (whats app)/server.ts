@@ -413,6 +413,14 @@ ${userPersonality}`;
           }
         });
 
+        // Force formatting rules regardless of what is saved in the database
+        const finalSystemInstruction = systemInstruction + `\n\nFORMATTING RULES:
+- NEVER use quotation marks ("") around words or phrases in your replies — real people don't type like that in casual WhatsApp chats.
+- Keep each reply focused on ONE single thought or question — do not combine multiple questions or options in one message.
+- Avoid listing multiple options in a single reply. If you're curious, ask just one simple thing.
+- Keep messages SHORT — 1 line ideally, max 2 short lines. No exceptions.
+- Write like a normal text message, not like a formatted answer.`;
+
         let aiReply = "";
         const maxAttempts = 3;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -426,7 +434,7 @@ ${userPersonality}`;
               model: "gemini-2.5-flash",
               contents: chatContents as any,
               config: {
-                systemInstruction: systemInstruction,
+                systemInstruction: finalSystemInstruction,
                 temperature: 0.85,
                 maxOutputTokens: 80,
               }
