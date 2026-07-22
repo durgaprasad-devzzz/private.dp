@@ -478,7 +478,17 @@ export default function App() {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowApiKey(!showApiKey)}
+                        onClick={() => {
+                          if (!showApiKey) {
+                            const enteredPassword = window.prompt("Please enter the admin password to view the API Key:");
+                            const correctPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+                            if (enteredPassword !== correctPassword) {
+                              alert("❌ Incorrect Password! You cannot view the API Key.");
+                              return;
+                            }
+                          }
+                          setShowApiKey(!showApiKey);
+                        }}
                         className="absolute right-3 text-slate-400 hover:text-slate-600 transition-colors"
                       >
                         {showApiKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
