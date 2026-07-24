@@ -3,10 +3,13 @@ import { initAuthCreds, BufferJSON, proto } from "@whiskeysockets/baileys";
 
 export const useFirestoreAuthState = async (db: any, collectionName: string) => {
     
+    // Replace characters that Firestore doesn't allow in document IDs (like /)
+    const fixId = (id: string) => id?.replace(/\//g, '__')?.replace(/:/g, '-');
+
     // Safely writes data to a Firestore document
     const writeData = async (data: any, id: string) => {
         try {
-            const docRef = doc(db, collectionName, id);
+            const docRef = doc(db, collectionName, fixId(id));
             // We use Baileys BufferJSON replacer to convert Uint8Arrays to base64 strings so Firebase doesn't complain
             const serialized = JSON.parse(JSON.stringify(data, BufferJSON.replacer));
             await setDoc(docRef, serialized);
@@ -18,7 +21,7 @@ export const useFirestoreAuthState = async (db: any, collectionName: string) => 
     // Safely reads data from a Firestore document
     const readData = async (id: string) => {
         try {
-            const docRef = doc(db, collectionName, id);
+            const docRef = doc(db, collectionName, fixId(id));
             const snapshot = await getDoc(docRef);
             if (snapshot.exists()) {
                 // We use Baileys BufferJSON reviver to convert base64 strings back to Uint8Arrays
@@ -34,7 +37,7 @@ export const useFirestoreAuthState = async (db: any, collectionName: string) => 
     // Deletes a specific document
     const removeData = async (id: string) => {
         try {
-            const docRef = doc(db, collectionName, id);
+            const docRef = doc(db, collectionName, fixId(id));
             await deleteDoc(docRef);
         } catch (error) {
             console.error(`[FirebaseAuthState] Error removing ${id}:`, error);
