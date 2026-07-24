@@ -129,7 +129,7 @@ async function authenticateServer() {
     logDebug("WARNING: No VITE_ADMIN_PASSWORD found in environment. Server is running unauthenticated.");
   }
 }
-authenticateServer();
+await authenticateServer();
 
 logDebug("Firebase Firestore initialized.");
 
