@@ -10,8 +10,13 @@ export const useFirestoreAuthState = async (db: any, collectionName: string) => 
     const writeData = async (data: any, id: string) => {
         try {
             const docRef = doc(db, collectionName, fixId(id));
-            // We use Baileys BufferJSON replacer to convert Uint8Arrays to base64 strings so Firebase doesn't complain
-            const serialized = JSON.parse(JSON.stringify(data, BufferJSON.replacer));
+            let serialized = JSON.parse(JSON.stringify(data, BufferJSON.replacer));
+            
+            // Firestore requires data to be an object. If it's a primitive or array, wrap it.
+            if (serialized === null || typeof serialized !== 'object' || Array.isArray(serialized)) {
+                serialized = { _data: serialized };
+            }
+            
             await setDoc(docRef, serialized);
         } catch (error) {
             console.error(`[FirebaseAuthState] Error writing ${id}:`, error);
@@ -24,8 +29,14 @@ export const useFirestoreAuthState = async (db: any, collectionName: string) => 
             const docRef = doc(db, collectionName, fixId(id));
             const snapshot = await getDoc(docRef);
             if (snapshot.exists()) {
-                // We use Baileys BufferJSON reviver to convert base64 strings back to Uint8Arrays
-                return JSON.parse(JSON.stringify(snapshot.data()), BufferJSON.reviver);
+                let data = snapshot.data();
+                
+                // Unwrap if it was wrapped by writeData
+                if (data && typeof data === 'object' && '_data' in data && Object.keys(data).length === 1) {
+                    data = data._data;
+                }
+                
+                return JSON.parse(JSON.stringify(data), BufferJSON.reviver);
             }
             return null;
         } catch (error) {
