@@ -330,7 +330,8 @@ async function connectToWhatsApp() {
           message: text,
           type: "incoming",
           timestamp: Timestamp.now(),
-          aiResponse: false
+          aiResponse: false,
+          rawMessage: JSON.stringify(msg)
         });
         logDebug("Incoming message successfully logged.");
 
