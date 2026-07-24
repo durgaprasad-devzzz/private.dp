@@ -8,6 +8,7 @@ import qrcode from "qrcode";
 import { GoogleGenAI } from "@google/genai";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, Timestamp, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import firebaseConfig from "./firebase-applet-config.json";
 import makeWASocket, { 
   DisconnectReason, 
@@ -112,8 +113,24 @@ logDebug("Starting server environment...");
 // Firebase Initialization (Server-side)
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+const auth = getAuth(firebaseApp);
 
-// We initialize GoogleGenAI dynamically per request or using dynamic key
+// Authenticate Server as Admin for secure Firestore access
+async function authenticateServer() {
+  const adminPassword = process.env.VITE_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
+  if (adminPassword) {
+    try {
+      await signInWithEmailAndPassword(auth, "lovelyprasad6551@gmail.com", adminPassword);
+      logDebug("Server successfully authenticated as Admin in Firebase.");
+    } catch (err: any) {
+      logDebug(`Server failed to authenticate with Firebase: ${err.message}`);
+    }
+  } else {
+    logDebug("WARNING: No VITE_ADMIN_PASSWORD found in environment. Server is running unauthenticated.");
+  }
+}
+authenticateServer();
+
 logDebug("Firebase Firestore initialized.");
 
 // Baileys Setup
