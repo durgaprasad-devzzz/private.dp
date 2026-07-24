@@ -115,22 +115,7 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
 const auth = getAuth(firebaseApp);
 
-// Authenticate Server as Admin for secure Firestore access
-async function authenticateServer() {
-  const adminPassword = process.env.VITE_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
-  if (adminPassword) {
-    try {
-      await signInWithEmailAndPassword(auth, "lovelyprasad6551@gmail.com", adminPassword);
-      logDebug("Server successfully authenticated as Admin in Firebase.");
-    } catch (err: any) {
-      logDebug(`Server failed to authenticate with Firebase: ${err.message}`);
-    }
-  } else {
-    logDebug("WARNING: No VITE_ADMIN_PASSWORD found in environment. Server is running unauthenticated.");
-  }
-}
-await authenticateServer();
-
+// Removed authenticateServer to bypass operation-not-allowed issues
 logDebug("Firebase Firestore initialized.");
 
 // Baileys Setup
