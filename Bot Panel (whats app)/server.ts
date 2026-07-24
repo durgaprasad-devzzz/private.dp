@@ -238,10 +238,11 @@ async function connectToWhatsApp() {
           return;
         }
 
-        // Use remoteJidAlt if available to bypass the @lid issue, fallback to remoteJid
-        const from = msg.key.remoteJidAlt || msg.key.remoteJid!;
+        // Use remoteJid for sending (required for crypto), but remoteJidAlt for logging
+        const sendToJid = msg.key.remoteJid!;
+        const logJid = msg.key.remoteJidAlt || msg.key.remoteJid!;
         const fromMe = !!msg.key.fromMe;
-        logDebug(`Processing message. RemoteJID: ${from}, FromMe: ${fromMe}, ID: ${msg.key.id}`);
+        logDebug(`Processing message. SendJID: ${sendToJid}, LogJID: ${logJid}, FromMe: ${fromMe}, ID: ${msg.key.id}`);
 
         if (!msg.message) {
           logDebug("Message content is missing/empty (could be a receipt or system stub).");
@@ -319,26 +320,31 @@ async function connectToWhatsApp() {
         const knownContact = contacts.find((c: any) => c.id === from || c.id.includes(participantPhone));
         
         if (settings && settings.ignoreUnknown && !knownContact) {
-          logDebug(`Strict Mode is ON and ${from} is not in contacts. Ignoring message completely.`);
+          logDebug(`Strict Mode is ON and ${logJid} is not in contacts. Ignoring message completely.`);
           return;
         }
 
         // 1. Log Incoming Message to Firestore
         logDebug("Logging incoming message to Firestore...");
-        await addDoc(collection(db, "logs"), {
-          from: from.split("@")[0],
-          to: "Bot",
-          message: text,
-          type: "incoming",
-          timestamp: Timestamp.now(),
-          aiResponse: false,
-          rawMessage: JSON.stringify({
-            remoteJid: msg.key.remoteJid,
-            participant: msg.key.participant,
-            pushName: msg.pushName
-          })
-        });
-        logDebug("Incoming message successfully logged.");
+        try {
+          await addDoc(collection(db, "logs"), {
+            from: logJid.split("@")[0],
+            to: "Bot",
+            message: text,
+            type: "incoming",
+            timestamp: Timestamp.now(),
+            aiResponse: false,
+            rawMessage: JSON.stringify({
+              remoteJid: msg.key.remoteJid,
+              remoteJidAlt: msg.key.remoteJidAlt,
+              participant: msg.key.participant,
+              pushName: msg.pushName
+            })
+          });
+          logDebug("Incoming message successfully logged.");
+        } catch (err) {
+          logDebug(`Error logging incoming message: ${err}`);
+        }
 
         // 2. Generate AI Response with Conversation History
         logDebug(`Retrieving recent conversation history for ${participantPhone}...`);
@@ -532,21 +538,21 @@ ${personaInstruction}`;
           }
 
           // 3. Send Reply via Baileys
-          logDebug(`Sending reply to ${from}...`);
-          await currentSock.sendMessage(from, { text: aiReply }, { quoted: msg });
+          logDebug(`Sending reply to ${sendToJid}...`);
+          await currentSock.sendMessage(sendToJid, { text: aiReply }, { quoted: msg });
           logDebug("Reply sent successfully via Baileys.");
 
           // 4. Log Outgoing Message to Firestore
           logDebug("Logging outgoing response to Firestore...");
           await addDoc(collection(db, "logs"), {
             from: "Bot",
-            to: from.split("@")[0],
+            to: logJid.split("@")[0],
             message: aiReply,
             type: "outgoing",
             timestamp: Timestamp.now(),
             aiResponse: true
           });
-          logDebug("Outgoing response successfully logged.");
+          logDebug("Outgoing message successfully logged.");
         }
 
       } catch (error: any) {
