@@ -339,7 +339,6 @@ async function connectToWhatsApp() {
         logDebug("Incoming message successfully logged.");
 
         // 2. Generate AI Response with Conversation History
-        const participantPhone = from.split("@")[0];
         logDebug(`Retrieving recent conversation history for ${participantPhone}...`);
         
         let participantLogs: any[] = [];
