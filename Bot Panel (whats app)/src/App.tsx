@@ -115,6 +115,12 @@ export default function App() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<string | null>(null);
 
+  const getContactName = (phoneOrId: string) => {
+    const cleanId = phoneOrId.split("@")[0];
+    const contact = contacts.find(c => c.phone === cleanId || c.id === cleanId);
+    return contact ? contact.name : cleanId;
+  };
+
   // WhatsApp Connection State
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [connStatus, setConnStatus] = useState<"connected" | "disconnected" | "connecting" | "pairing">("disconnected");
@@ -710,7 +716,7 @@ export default function App() {
                                 {log.timestamp.toDate().toLocaleString()}
                               </td>
                               <td className="px-6 py-4 text-sm font-semibold text-slate-900">
-                                {cleanParticipant}
+                                {getContactName(participant)}
                               </td>
                               <td className="px-6 py-4 text-sm text-slate-700 break-words whitespace-pre-wrap max-w-md min-w-[200px]">
                                 {log.message}
