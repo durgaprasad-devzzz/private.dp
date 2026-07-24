@@ -533,7 +533,7 @@ ${personaInstruction}`;
 
           // 3. Send Reply via Baileys
           logDebug(`Sending reply to ${from}...`);
-          await currentSock.sendMessage(from, { text: aiReply });
+          await currentSock.sendMessage(from, { text: aiReply }, { quoted: msg });
           logDebug("Reply sent successfully via Baileys.");
 
           // 4. Log Outgoing Message to Firestore
