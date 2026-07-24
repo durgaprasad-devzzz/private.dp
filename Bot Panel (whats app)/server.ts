@@ -238,7 +238,8 @@ async function connectToWhatsApp() {
           return;
         }
 
-        const from = msg.key.remoteJid!;
+        // Use remoteJidAlt if available to bypass the @lid issue, fallback to remoteJid
+        const from = msg.key.remoteJidAlt || msg.key.remoteJid!;
         const fromMe = !!msg.key.fromMe;
         logDebug(`Processing message. RemoteJID: ${from}, FromMe: ${fromMe}, ID: ${msg.key.id}`);
 
