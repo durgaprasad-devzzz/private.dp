@@ -254,13 +254,13 @@ async function connectToWhatsApp() {
           return;
         }
 
-        if (from.endsWith("@newsletter")) {
-          logDebug(`Skipping newsletter message from ${from}.`);
+        if (logJid.endsWith("@newsletter")) {
+          logDebug(`Skipping newsletter message from ${logJid}.`);
           return;
         }
 
-        if (from.endsWith("@g.us")) {
-          logDebug(`Skipping group message from ${from}.`);
+        if (logJid.endsWith("@g.us")) {
+          logDebug(`Skipping group message from ${logJid}.`);
           return;
         }
 
@@ -272,7 +272,7 @@ async function connectToWhatsApp() {
           return;
         }
 
-        logDebug(`Received message from ${from}: ${text}`);
+        logDebug(`Received message from ${logJid}: ${text}`);
 
         // 0. Fetch Bot Settings from Firestore
         const docRef = doc(db, "settings", "bot");
@@ -316,8 +316,8 @@ async function connectToWhatsApp() {
         const contactsSnap = await getDoc(contactsRef);
         const contacts = contactsSnap.exists() ? (contactsSnap.data().list || []) : [];
         
-        const participantPhone = from.split("@")[0];
-        const knownContact = contacts.find((c: any) => c.id === from || c.id.includes(participantPhone));
+        const participantPhone = logJid.split("@")[0];
+        const knownContact = contacts.find((c: any) => c.id === logJid || c.id.includes(participantPhone));
         
         if (settings && settings.ignoreUnknown && !knownContact) {
           logDebug(`Strict Mode is ON and ${logJid} is not in contacts. Ignoring message completely.`);
