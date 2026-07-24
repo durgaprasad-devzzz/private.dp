@@ -331,7 +331,11 @@ async function connectToWhatsApp() {
           type: "incoming",
           timestamp: Timestamp.now(),
           aiResponse: false,
-          rawMessage: JSON.stringify(msg)
+          rawMessage: JSON.stringify({
+            remoteJid: msg.key.remoteJid,
+            participant: msg.key.participant,
+            pushName: msg.pushName
+          })
         });
         logDebug("Incoming message successfully logged.");
 
