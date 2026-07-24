@@ -17,6 +17,7 @@ import makeWASocket, {
 import { Boom } from "@hapi/boom";
 import pino from "pino";
 import fs from "fs";
+import { useFirestoreAuthState, clearFirestoreAuthState } from "./firebaseAuthState";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000");
@@ -124,14 +125,7 @@ let qrCode: string | null = null;
 let connectionStatus: "connecting" | "open" | "close" | "pairing" = "close";
 
 function clearAuthDir() {
-  try {
-    if (fs.existsSync("auth_info_baileys")) {
-      fs.rmSync("auth_info_baileys", { recursive: true, force: true });
-      logDebug("Cleared auth_info_baileys folder for a clean session.");
-    }
-  } catch (err: any) {
-    logDebug(`Error clearing auth_info_baileys folder: ${err.message || err}`);
-  }
+  clearFirestoreAuthState(db, "whatsapp_auth").catch(err => console.error("Error clearing firestore auth:", err));
 }
 
 async function connectToWhatsApp() {
@@ -139,7 +133,7 @@ async function connectToWhatsApp() {
   isStarting = true;
   
   try {
-    const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
+    const { state, saveCreds } = await useFirestoreAuthState(db, "whatsapp_auth");
     const { version } = await fetchLatestBaileysVersion();
 
     if (sock) {
